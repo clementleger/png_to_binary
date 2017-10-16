@@ -1,0 +1,16 @@
+package "png_to_byte" 
+version "0.1"
+purpose  "PNG converter to byte array"
+
+description "png_to_byte allows to convert png files to byte array"
+
+defgroup "format" groupdesc="Output format" required
+groupoption "array" 	a 	"Rendered the png as a byte array" string group="format" argoptional
+
+section "Output options"
+option  "input"		i	"Input png file" string required
+option  "output"	o	"Output file" string required
+option  "format"	f	"Render format" enum values="byte" default="byte"
+
+option  "dummy1"              -   "Avoid compilation error with Werror"                          int        optional       default="0"    hidden
+option  "dummy2"              -   "Avoid compilation error with Werror"                          flag        off            dependon="dummy1"   hidden
