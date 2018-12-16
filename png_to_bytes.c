@@ -12,6 +12,8 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include "png_to_bytes_opt.h"
+
 #define PNG_DEBUG 3
 #include <png.h>
 
@@ -24,8 +26,6 @@ void abort_(const char * s, ...)
         va_end(args);
         abort();
 }
-
-int x, y;
 
 int width, height;
 png_byte color_type;
@@ -75,7 +75,6 @@ void read_png_file(char* file_name)
         number_of_passes = png_set_interlace_handling(png_ptr);
         png_read_update_info(png_ptr, info_ptr);
 
-
         /* read file */
         if (setjmp(png_jmpbuf(png_ptr)))
                 abort_("[read_png_file] Error during read_image");
@@ -92,6 +91,8 @@ void read_png_file(char* file_name)
 
 void process_file(void)
 {
+	int x, y;
+
         if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
                 abort_("[process_file] input file is PNG_COLOR_TYPE_RGB but must be PNG_COLOR_TYPE_RGBA "
                        "(lacks the alpha channel)");
@@ -106,10 +107,6 @@ void process_file(void)
                         png_byte* ptr = &(row[x*4]);
                         printf("Pixel at position [ %d - %d ] has RGBA values: %d - %d - %d - %d\n",
                                x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
-
-                        /* set red value to 0 and green value to the blue one */
-                        ptr[0] = 0;
-                        ptr[1] = ptr[2];
                 }
         }
 }
@@ -123,7 +120,10 @@ int main(int argc, char **argv)
 		return 1;
 
         read_png_file(args_info.input_arg);
-        process_file();
+
+	if (args_info.format_arg width % 8 )
+        
+        process_file(args_info.input_arg);
 
         return 0;
 }
