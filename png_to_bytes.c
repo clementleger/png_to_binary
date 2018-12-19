@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include "png_to_bytes_opt.h"
 
@@ -38,6 +39,7 @@ png_bytep * row_pointers;
 
 void read_png_file(char* file_name)
 {
+        int y;
         char header[8];    // 8 is the maximum size that can be checked
 
         /* open file and test for it being a png */
@@ -89,31 +91,48 @@ void read_png_file(char* file_name)
 }
 
 
-void process_file(void)
+int func_8ppb_formatter(struct png_to_bytes_opt_args_info *args_info)
 {
 	int x, y;
-
-        if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
-                abort_("[process_file] input file is PNG_COLOR_TYPE_RGB but must be PNG_COLOR_TYPE_RGBA "
-                       "(lacks the alpha channel)");
-
-        if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA)
-                abort_("[process_file] color_type of input file must be PNG_COLOR_TYPE_RGBA (%d) (is %d)",
-                       PNG_COLOR_TYPE_RGBA, png_get_color_type(png_ptr, info_ptr));
-
-        for (y=0; y<height; y++) {
+        
+        for (y = 0; y < height; y++) {
                 png_byte* row = row_pointers[y];
-                for (x=0; x<width; x++) {
+                for (x = 0; x < width; x++) {
                         png_byte* ptr = &(row[x*4]);
                         printf("Pixel at position [ %d - %d ] has RGBA values: %d - %d - %d - %d\n",
                                x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
+                        
                 }
         }
 }
 
+struct output_formatter {
+        const char *name;
+        int (*format_func)(struct png_to_bytes_opt_args_info *);
+};
+
+static struct output_formatter formats[] = {
+        {"8ppb", func_8ppb_formatter},
+        {NULL, NULL}
+};
+
+static struct output_formatter *get_formatter(const char *name)
+{
+        struct output_formatter *formatter = &formats[0];
+
+        while (formatter->name != NULL) {
+                if (strcmp(name, formatter->name) == 0)
+                        return formatter;
+
+                formatter++;
+        }
+
+        return NULL;
+}
 
 int main(int argc, char **argv)
 {
+        struct output_formatter *formatter = NULL;
 	struct png_to_bytes_opt_args_info args_info;
 
 	if(png_to_bytes_opt (argc, argv, &args_info))
@@ -121,9 +140,14 @@ int main(int argc, char **argv)
 
         read_png_file(args_info.input_arg);
 
-	if (args_info.format_arg width % 8 )
-        
-        process_file(args_info.input_arg);
+        if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA)
+                abort_("[process_file] color_type of input file must be PNG_COLOR_TYPE_RGBA (%d) (is %d)",
+                       PNG_COLOR_TYPE_RGBA, png_get_color_type(png_ptr, info_ptr));
 
-        return 0;
+        formatter = get_formatter(args_info.format_arg);
+        if (!formatter) {
+                fprintf(stderr, "Invalid output format name");
+                return -EINVAL;
+        }
+        return formatter->format_func(&args_info.input_arg);
 }

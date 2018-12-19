@@ -10,4 +10,4 @@ groupoption "array" 	a 	"Rendered the png as a byte array" string group="format"
 section "Output options"
 option  "input"		i	"Input png file" string required
 option  "output"	o	"Output file" string required
-option  "format"	f	"Render format" enum values="8ppb" default="8ppb"
+option  "format"	f	"Render format" string values="8ppb" default="8ppb"
