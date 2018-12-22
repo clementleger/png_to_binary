@@ -36,12 +36,11 @@ png_byte bit_depth;
 png_structp png_ptr;
 png_infop info_ptr;
 int number_of_passes;
-png_bytep * row_pointers;
+png_bytepp rows;
 
 void read_png_file(char* file_name)
 {
-	int y;
-	char header[8];    // 8 is the maximum size that can be checked
+	unsigned char header[8];    // 8 is the maximum size that can be checked
 
 	/* open file and test for it being a png */
 	FILE *fp = fopen(file_name, "rb");
@@ -68,46 +67,54 @@ void read_png_file(char* file_name)
 	png_init_io(png_ptr, fp);
 	png_set_sig_bytes(png_ptr, 8);
 
-	png_read_info(png_ptr, info_ptr);
+	png_read_png(png_ptr, info_ptr, PNG_TRANSFORM_EXPAND, NULL);
 
 	width = png_get_image_width(png_ptr, info_ptr);
 	height = png_get_image_height(png_ptr, info_ptr);
 	color_type = png_get_color_type(png_ptr, info_ptr);
 	bit_depth = png_get_bit_depth(png_ptr, info_ptr);
-
-	number_of_passes = png_set_interlace_handling(png_ptr);
-	png_read_update_info(png_ptr, info_ptr);
-
-	/* read file */
-	if (setjmp(png_jmpbuf(png_ptr)))
-		abort_("[read_png_file] Error during read_image");
-
-	row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
-	for (y=0; y<height; y++)
-		row_pointers[y] = (png_byte*) malloc(png_get_rowbytes(png_ptr,info_ptr));
-
-	png_read_image(png_ptr, row_pointers);
+	rows = png_get_rows (png_ptr, info_ptr);
 
 	fclose(fp);
 }
 
-int func_8ppb_formatter(struct png_to_bytes_opt_args_info *args_info, FILE *out)
+int func_8ppbbw_formatter(struct png_to_bytes_opt_args_info *args_info, FILE *out)
 {
-	int x, y;
-	int color_type = png_get_color_type(png_ptr, info_ptr);
+	int x, y, z;
 	int channels = png_get_channels(png_ptr, info_ptr);
-	int chan;
-	
+	int cur_bit = 0;
+
 	fprintf(out, "#define WIDTH %d\n", ALIGN(width, 8));
 	fprintf(out, "#define HEIGHT %d\n", height);
+	fprintf(out, "static unsigned char image[%d][%d] = {\n", ALIGN(width, 8)/8, height);
 
 	for (y = 0; y < height; y++) {
-		png_byte* row = row_pointers[y];
+		png_bytep row = rows[y];
 		for (x = 0; x < width; x++) {
 			png_byte* ptr = &(row[x*channels]);
+			if (cur_bit == 0)
+				fprintf(out, "{0b");
+				
+			if (ptr[0])
+				fprintf(out, "1");
+			else
+				fprintf(out, "0");
+
+			cur_bit++;
+			if (cur_bit == 8) {
+				fprintf(out, ",");
+				cur_bit = 0;
+			}
 		}
-		fprintf(out, "\n");
-	}	
+		/* Pad with 0 */
+		for (z = 0; z < (8 - cur_bit); z++)
+			fprintf(out, "0");
+		fprintf(out, "}\n");
+	}
+
+	fprintf(out, "}\n");
+
+	return 0;
 }
 
 struct output_formatter {
@@ -116,7 +123,7 @@ struct output_formatter {
 };
 
 static struct output_formatter formats[] = {
-	{"8ppb", func_8ppb_formatter},
+	{"8ppbbw", func_8ppbbw_formatter},
 	{NULL, NULL}
 };
 
@@ -151,7 +158,7 @@ int main(int argc, char **argv)
 		return EINVAL;
 	}
 	
-	output = fopen(args_info.output_arg, "a+");
+	output = fopen(args_info.output_arg, "w");
 	if (!output) {
 		fprintf(stderr, "Fail to open output file %s\n", args_info.output_arg);
 		return errno;
@@ -160,4 +167,6 @@ int main(int argc, char **argv)
 	return formatter->format_func(&args_info, output);
 	
 	fclose(output);
+
+	return 0;
 }

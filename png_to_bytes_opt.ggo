@@ -7,4 +7,4 @@ description "png_to_byte allows to convert png files to byte array"
 section "Output options"
 option  "input"		i	"Input png file" string required
 option  "output"	o	"Output file" string required
-option  "format"	f	"Render format" string values="8ppb" default="8ppb" optional
+option  "format"	f	"Render format" string values="8ppbbw" default="8ppbbw" optional
