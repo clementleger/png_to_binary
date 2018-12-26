@@ -1,5 +1,5 @@
 LDFLAGS := $(shell pkg-config libpng --libs)
-CFLAGS := $(shell pkg-config libpng --cflags) -g -Wall -Werror
+CFLAGS := $(shell pkg-config libpng --cflags) -g -Wall -Werror -Wno-unused-but-set-variable
 
 png_to_bytes: png_to_bytes.o png_to_bytes_opt.o
 

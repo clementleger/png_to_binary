@@ -8,3 +8,5 @@ section "Output options"
 option  "input"		i	"Input png file" string required
 option  "output"	o	"Output file" string required
 option  "format"	f	"Render format" string values="8ppbbw" default="8ppbbw" optional
+option  "name"		n	"Image name" string default="image" optional
+option  "invert"	I	"Invert colors" flag off
